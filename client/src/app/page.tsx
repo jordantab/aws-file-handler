@@ -44,10 +44,28 @@ const HomePage = () => {
         body: file,
       });
 
-      alert("File uploaded successfully!");
+      // S3 link of the uploaded file
+      const s3Link = url.split("?")[0];
+
+      // 3: Call API Gateway to store metadata
+      const apiGatewayURL =
+        "https://1o5sr7szq5.execute-api.us-east-1.amazonaws.com/prod/";
+
+      const ddbResponse = await fetch(apiGatewayURL, {
+        method: "POST",
+        body: JSON.stringify({
+          text: text,
+          s3Link: s3Link,
+        }),
+      });
+      if (ddbResponse.ok) {
+        alert("File uploaded successfully!");
+      } else {
+        throw new Error("Failed to store metadata in DynamoDB");
+      }
     } catch (error) {
       console.error("Upload failed:", error);
-      alert("Failed to upload the file.");
+      alert("Failed to upload the file to S3.");
     } finally {
       setIsUploading(false);
     }
