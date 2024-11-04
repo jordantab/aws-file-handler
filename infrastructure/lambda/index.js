@@ -1,5 +1,5 @@
 const { DynamoDBClient, PutItemCommand } = require("@aws-sdk/client-dynamodb");
-
+const { randomUUID } = require("crypto");
 
 // Initialize DynamoDB client
 const ddb = new DynamoDBClient();
@@ -8,7 +8,7 @@ const storeMetadata = async function (text, s3Link) {
     const params = {
         TableName: process.env.TABLE_NAME,
         Item: {
-            id: { S: new Date().toISOString() },
+            id: { S: randomUUID() },
             text: { S: text },                 
             s3Link: { S: s3Link }              
         }
@@ -17,6 +17,7 @@ const storeMetadata = async function (text, s3Link) {
     try {
         const command = new PutItemCommand(params)
         const response = await ddb.send(command);
+
         return {
             statusCode: 200,
             headers: {"Access-Control-Allow-Origin": "*"},
@@ -45,11 +46,11 @@ exports.handler = async function (event) {
                 body: JSON.stringify({ error: "Missing required fields: text and s3Link" }),
             }
         }
-        const response = await storeMetadata(text, s3Link)
+        const metadataResponse = await storeMetadata(text, s3Link)
         return {
-            ...response,
+            ...metadataResponse,
             headers: {
-                ...response.headers,
+                ...metadataResponse.headers,
                 "Access-Control-Allow-Origin": "*",
             },
         };
