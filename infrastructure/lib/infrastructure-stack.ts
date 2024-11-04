@@ -64,6 +64,13 @@ export class InfrastructureStack extends cdk.Stack {
     instanceRole.addManagedPolicy(
       iam.ManagedPolicy.fromAwsManagedPolicyName("CloudWatchAgentServerPolicy")
     );
+    instanceRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["dynamodb:UpdateItem"],
+        resources: [metadataTable.tableArn],
+      })
+    );
 
     const instanceProfile = new iam.CfnInstanceProfile(
       this,
@@ -86,7 +93,7 @@ export class InfrastructureStack extends cdk.Stack {
 
     metadataTable.grantStreamRead(summarize);
 
-    //  Add event source for summarize handler
+    //  Add event source for summarize handler to keep track of new file uploads
     summarize.addEventSource(
       new eventsources.DynamoEventSource(metadataTable, {
         startingPosition: lambda.StartingPosition.LATEST,
@@ -98,7 +105,7 @@ export class InfrastructureStack extends cdk.Stack {
       })
     );
 
-    //  Give lambda function necessary permissions to create ec2 instance
+    //  Give lambda function necessary permissions to create ec2 instance with power
     summarize.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
@@ -120,34 +127,5 @@ export class InfrastructureStack extends cdk.Stack {
         ],
       })
     );
-
-    // // create security group for ec2 instance with proper permissions
-    // const ec2SecurityGroup = new ec2.SecurityGroup(this, "EC2SecurityGroup", {
-    //   vpc: new ec2.Vpc(this, "VPC"),
-    //   description: "Security group for EC2 instance",
-    //   allowAllOutbound: true,
-    // });
-
-    // // Allow ssh access
-    // ec2SecurityGroup.addIngressRule(
-    //   ec2.Peer.anyIpv4(),
-    //   ec2.Port.tcp(22),
-    //   "Allow SSH"
-    // );
-
-    // // To access in lambda function
-    // summarize.addEnvironment(
-    //   "SECURITY_GROUP_ID",
-    //   ec2SecurityGroup.securityGroupId
-    // );
-
-    // // add security group to lambda
-    // summarize.addToRolePolicy(
-    //   new iam.PolicyStatement({
-    //     effect: iam.Effect.ALLOW,
-    //     actions: ["ec2:AuthorizeSecurityGroupIngress"],
-    //     resources: [ec2SecurityGroup.securityGroupId],
-    //   })
-    // );
   }
 }

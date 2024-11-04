@@ -35,6 +35,11 @@ async function launchEC2Instance(bucketName, instanceRoleArn, itemId, s3Link) {
 
     const userData = `#!/bin/bash
         echo "Starting user data script..." | tee -a /var/log/cloud-init-output.log
+        # Install boto3 and any other required dependencies
+        sudo yum update -y
+        sudo yum install -y python3-pip
+        pip3 install boto3
+        pip3 install uuid
 
         # Set environment variables and export them for the session
         export TABLE_NAME="${process.env.TABLE_NAME}"
@@ -49,13 +54,13 @@ async function launchEC2Instance(bucketName, instanceRoleArn, itemId, s3Link) {
         echo "S3_LINK=${s3Link}" >> /etc/environment
 
         # Download the Python script from S3
-        echo "Downloading script from S3" | tee -a /home/ec2-user/placeholder_script_output.log
-        aws s3 cp s3://${bucketName}/${scriptKey} /home/ec2-user/placeholder_script.py | tee -a /home/ec2-user/placeholder_script_output.log
+        echo "Downloading script from S3" | tee -a /home/ec2-user/placeholder_output.log
+        aws s3 cp s3://${bucketName}/${scriptKey} /home/ec2-user/placeholder.py | tee -a /home/ec2-user/placeholder_output.log
 
         # Make the script executable and run it
-        chmod +x /home/ec2-user/placeholder_script.py | tee -a /home/ec2-user/placeholder_script_output.log
-        echo "Running the placeholder script" | tee -a /home/ec2-user/placeholder_script_output.log
-        python3 /home/ec2-user/placeholder_script.py | tee -a /home/ec2-user/placeholder_script_output.log
+        chmod +x /home/ec2-user/placeholder.py | tee -a /home/ec2-user/placeholder_output.log
+        echo "Running the placeholder script" | tee -a /home/ec2-user/placeholder_output.log
+        python3 /home/ec2-user/placeholder.py | tee -a /home/ec2-user/placeholder_output.log
 
         echo "User data script completed" | tee -a /var/log/cloud-init-output.log
         `;
