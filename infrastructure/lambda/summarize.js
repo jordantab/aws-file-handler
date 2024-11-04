@@ -14,12 +14,15 @@ exports.handler = async function (event) {
         
         if (record.eventName == 'INSERT') {
             const newItem = record.dynamodb.NewImage;
-            console.log("New item added: ", JSON.stringify(newItem,));
+            console.log("New item added: ", JSON.stringify(newItem));
+            const itemId = newItem.id.S;
+            const s3Link = newItem.s3Link.S;
+            const text = newItem.text.S;
             
             // TODO: launch instance
             try {
                 console.log("Creating new ec2 instance")
-                await launchEC2Instance(bucketName, instanceRoleArn)
+                await launchEC2Instance(bucketName, instanceRoleArn, itemId, s3Link)
             } catch (err) {
                 console.error("Error launching EC2 instance:", err);
             }
@@ -27,19 +30,23 @@ exports.handler = async function (event) {
     }
 };
 
-async function launchEC2Instance(bucketName, instanceRoleArn) {
+async function launchEC2Instance(bucketName, instanceRoleArn, itemId, s3Link) {
     const scriptKey = 'placeholder.py';
 
     const userData = `#!/bin/bash
         echo "Starting user data script..." | tee -a /var/log/cloud-init-output.log
 
-        # Update system and install necessary tools
-        sudo yum update -y | tee -a /var/log/cloud-init-output.log
-        echo "System update completed" | tee -a /var/log/cloud-init-output.log
+        # Set environment variables and export them for the session
+        export TABLE_NAME="${process.env.TABLE_NAME}"
+        export BUCKET_NAME="${bucketName}"
+        export ITEM_ID="${itemId}"
+        export S3_LINK="${s3Link}"
 
-        # Install Python3
-        sudo yum install -y python3 | tee -a /var/log/cloud-init-output.log
-        echo "Python3 installed" | tee -a /var/log/cloud-init-output.log
+        # Also write them to /etc/environment for system-wide persistence
+        echo "TABLE_NAME=${process.env.TABLE_NAME}" >> /etc/environment
+        echo "BUCKET_NAME=${bucketName}" >> /etc/environment
+        echo "ITEM_ID=${itemId}" >> /etc/environment
+        echo "S3_LINK=${s3Link}" >> /etc/environment
 
         # Download the Python script from S3
         echo "Downloading script from S3" | tee -a /home/ec2-user/placeholder_script_output.log
@@ -52,6 +59,7 @@ async function launchEC2Instance(bucketName, instanceRoleArn) {
 
         echo "User data script completed" | tee -a /var/log/cloud-init-output.log
         `;
+
 
     const params = {
         ImageId: 'ami-06b21ccaeff8cd686',
