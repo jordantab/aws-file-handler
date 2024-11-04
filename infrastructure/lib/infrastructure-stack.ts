@@ -88,6 +88,7 @@ export class InfrastructureStack extends cdk.Stack {
         TABLE_NAME: metadataTable.tableName,
         BUCKET_NAME: scriptBucket.bucketName,
         INSTANCE_ROLE_ARN: instanceProfile.attrArn,
+        OPENAI_API_KEY_SSM_PARAM: "/openai/api_key",
       },
     });
 
@@ -114,6 +115,7 @@ export class InfrastructureStack extends cdk.Stack {
           "ec2:DescribeInstances",
           "ec2:CreateTags",
           "iam:PassRole",
+          "ssm:GetParameter",
         ],
         resources: [
           "arn:aws:ec2:us-east-1:*:instance/*",
@@ -124,6 +126,7 @@ export class InfrastructureStack extends cdk.Stack {
           "arn:aws:ec2:us-east-1:*:volume/*",
           "arn:aws:ec2:us-east-1::image/*",
           instanceRole.roleArn,
+          `arn:aws:ssm:${this.region}:${this.account}:parameter/openai/api_key`,
         ],
       })
     );

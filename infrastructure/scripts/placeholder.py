@@ -1,10 +1,11 @@
+from urllib.parse import urlparse
 import boto3
 import os
 import uuid
-from urllib.parse import urlparse
-
+from openai import OpenAI
 
 region = os.getenv('AWS_REGION') or 'us-east-1'
+openai_api_key = os.getenv('OPENAI_API_KEY')
 
 # Set up clients
 dynamodb = boto3.client('dynamodb', region_name=region)
@@ -25,8 +26,31 @@ def download_file_from_s3(bucket_name, file_key):
 
 def generate_summary(file_content):
     """
+    Generates a summary for the given input text using OpenAI's GPT-4.
     """
-    return "Placeholder for the summary"
+    try:
+        # Initialize openai client
+        client = OpenAI(api_key=openai_api_key)
+
+        # User input to the llm
+        user_message = "Please summarize the following text:\n\n" + file_content
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that summarizes text. Don't return an explanation, just a summary of the input text."},
+                {"role": "user", "content": user_message}
+            ],
+            max_tokens=500,
+            temperature=0.1
+        )
+
+        # Extract the summary from the response
+        summary = response.choices[0].message.content
+        return summary
+
+    except Exception as e:
+        print(f"Error generating summary: {e}")
+        return None
 
 
 def append_summary_to_file_content(file_content, summary):
