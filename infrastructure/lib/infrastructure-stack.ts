@@ -5,11 +5,26 @@ import { LambdaRestApi } from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as eventsources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
+import * as ec2 from "aws-cdk-lib/aws-ec2";
 
 export class InfrastructureStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    // s3 bucket that stores the python script
+    const scriptBucket = new s3.Bucket(this, "ScriptBucket", {
+      versioned: false,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    new s3deploy.BucketDeployment(this, "DeployScript", {
+      sources: [s3deploy.Source.asset("./scripts")],
+      destinationBucket: scriptBucket,
+    });
+
+    // dynamoDB table that stores s3 file metadata
     const metadataTable = new dynamodb.Table(this, "FileMetadataTable", {
       partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
       tableName: "FileMetadataTable",
@@ -17,6 +32,7 @@ export class InfrastructureStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    // initial insertion of the new file metadata into the dynamoDB table
     const index = new lambda.Function(this, "IndexHandler", {
       runtime: lambda.Runtime.NODEJS_18_X,
       code: lambda.Code.fromAsset("lambda"),
@@ -28,6 +44,7 @@ export class InfrastructureStack extends cdk.Stack {
 
     metadataTable.grantWriteData(index);
 
+    // API Gateway for the DynamoDB insertion lambda function
     const gateway = new LambdaRestApi(this, "Endpoint", {
       handler: index,
       restApiName: "InfrastructureAPI",
@@ -37,12 +54,34 @@ export class InfrastructureStack extends cdk.Stack {
       },
     });
 
+    // create role for ec2 instance with necessary permissions
+    const instanceRole = new iam.Role(this, "EC2InstanceRole", {
+      assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
+    });
+
+    instanceRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonS3FullAccess")
+    );
+    instanceRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName("CloudWatchAgentServerPolicy")
+    );
+
+    const instanceProfile = new iam.CfnInstanceProfile(
+      this,
+      "EC2InstanceProfile",
+      {
+        roles: [instanceRole.roleName],
+      }
+    );
+
     const summarize = new lambda.Function(this, "SummarizeHandler", {
       runtime: lambda.Runtime.NODEJS_18_X,
       code: lambda.Code.fromAsset("lambda"),
       handler: "summarize.handler",
       environment: {
         TABLE_NAME: metadataTable.tableName,
+        BUCKET_NAME: scriptBucket.bucketName,
+        INSTANCE_ROLE_ARN: instanceProfile.attrArn,
       },
     });
 
@@ -68,6 +107,7 @@ export class InfrastructureStack extends cdk.Stack {
           "ec2:RunInstances",
           "ec2:DescribeInstances",
           "ec2:CreateTags",
+          "iam:PassRole",
         ],
         resources: [
           "arn:aws:ec2:us-east-1:*:instance/*",
@@ -76,9 +116,39 @@ export class InfrastructureStack extends cdk.Stack {
           "arn:aws:ec2:us-east-1:*:network-interface/*",
           "arn:aws:ec2:us-east-1:*:subnet/*",
           "arn:aws:ec2:us-east-1:*:volume/*",
-          "arn:aws:ec2:us-east-1::image/ami-0866a3c8686eaeeba",
+          "arn:aws:ec2:us-east-1::image/*",
+          instanceRole.roleArn,
         ],
       })
     );
+
+    // // create security group for ec2 instance with proper permissions
+    // const ec2SecurityGroup = new ec2.SecurityGroup(this, "EC2SecurityGroup", {
+    //   vpc: new ec2.Vpc(this, "VPC"),
+    //   description: "Security group for EC2 instance",
+    //   allowAllOutbound: true,
+    // });
+
+    // // Allow ssh access
+    // ec2SecurityGroup.addIngressRule(
+    //   ec2.Peer.anyIpv4(),
+    //   ec2.Port.tcp(22),
+    //   "Allow SSH"
+    // );
+
+    // // To access in lambda function
+    // summarize.addEnvironment(
+    //   "SECURITY_GROUP_ID",
+    //   ec2SecurityGroup.securityGroupId
+    // );
+
+    // // add security group to lambda
+    // summarize.addToRolePolicy(
+    //   new iam.PolicyStatement({
+    //     effect: iam.Effect.ALLOW,
+    //     actions: ["ec2:AuthorizeSecurityGroupIngress"],
+    //     resources: [ec2SecurityGroup.securityGroupId],
+    //   })
+    // );
   }
 }
