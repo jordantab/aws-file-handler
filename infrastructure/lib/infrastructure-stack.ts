@@ -64,11 +64,33 @@ export class InfrastructureStack extends cdk.Stack {
     instanceRole.addManagedPolicy(
       iam.ManagedPolicy.fromAwsManagedPolicyName("CloudWatchAgentServerPolicy")
     );
+
+    const ec2InstanceArn = cdk.Arn.format(
+      {
+        service: "ec2",
+        region: this.region,
+        account: this.account,
+        resource: "instance",
+        resourceName: "*",
+      },
+      this
+    );
+
+    const ssmParameterArn = cdk.Arn.format(
+      {
+        service: "ssm",
+        region: this.region,
+        account: this.account,
+        resource: "parameter/openai/api_key",
+      },
+      this
+    );
+
     instanceRole.addToPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ["dynamodb:UpdateItem"],
-        resources: [metadataTable.tableArn],
+        actions: ["dynamodb:UpdateItem", "ec2:TerminateInstances"],
+        resources: [metadataTable.tableArn, ec2InstanceArn],
       })
     );
 
@@ -126,7 +148,7 @@ export class InfrastructureStack extends cdk.Stack {
           "arn:aws:ec2:us-east-1:*:volume/*",
           "arn:aws:ec2:us-east-1::image/*",
           instanceRole.roleArn,
-          `arn:aws:ssm:${this.region}:${this.account}:parameter/openai/api_key`,
+          ssmParameterArn,
         ],
       })
     );
