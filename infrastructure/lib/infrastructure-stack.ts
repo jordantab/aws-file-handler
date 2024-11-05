@@ -12,15 +12,33 @@ export class InfrastructureStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // s3 bucket that stores the python script
-    const scriptBucket = new s3.Bucket(this, "ScriptBucket", {
+    // Create an S3 bucket for the application
+    const profoundBucket = new s3.Bucket(this, "ProfoundBucket", {
       versioned: false,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      cors: [
+        {
+          allowedOrigins: ["http://localhost:3000"],
+          allowedMethods: [s3.HttpMethods.PUT, s3.HttpMethods.POST],
+          allowedHeaders: ["*"],
+          exposedHeaders: ["ETag"],
+          maxAge: 3000,
+        },
+      ],
     });
 
+    // Output the bucket name
+    new cdk.CfnOutput(this, "S3BucketName", {
+      value: profoundBucket.bucketName,
+      description: "The S3 Bucket name where files are stored",
+      exportName: "S3BucketName",
+    });
+
+    // Upload the python script to s3 bucket
     new s3deploy.BucketDeployment(this, "DeployScript", {
       sources: [s3deploy.Source.asset("./scripts")],
-      destinationBucket: scriptBucket,
+      destinationBucket: profoundBucket,
+      destinationKeyPrefix: "scripts/",
     });
 
     // dynamoDB table that stores s3 file metadata
@@ -53,6 +71,13 @@ export class InfrastructureStack extends cdk.Stack {
       },
     });
 
+    // Output the API Gateway URL
+    new cdk.CfnOutput(this, "ApiGatewayUrl", {
+      value: gateway.url,
+      description: "The URL of the API Gateway",
+      exportName: "ApiGatewayUrl",
+    });
+
     // create role for ec2 instance with necessary permissions
     const instanceRole = new iam.Role(this, "EC2InstanceRole", {
       assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
@@ -65,6 +90,7 @@ export class InfrastructureStack extends cdk.Stack {
       iam.ManagedPolicy.fromAwsManagedPolicyName("CloudWatchAgentServerPolicy")
     );
 
+    // cdk friendly arn formatting
     const ec2InstanceArn = cdk.Arn.format(
       {
         service: "ec2",
@@ -108,7 +134,8 @@ export class InfrastructureStack extends cdk.Stack {
       handler: "summarize.handler",
       environment: {
         TABLE_NAME: metadataTable.tableName,
-        BUCKET_NAME: scriptBucket.bucketName,
+        BUCKET_NAME: profoundBucket.bucketName,
+        SCRIPT_PREFIX: "scripts/",
         INSTANCE_ROLE_ARN: instanceProfile.attrArn,
         OPENAI_API_KEY_SSM_PARAM: "/openai/api_key",
       },

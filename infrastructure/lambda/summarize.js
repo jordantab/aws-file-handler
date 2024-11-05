@@ -45,7 +45,7 @@ exports.handler = async function (event) {
 };
 
 async function launchEC2Instance(bucketName, instanceRoleArn, itemId, s3Link, openaiApiKey) {
-    const scriptKey = 'placeholder.py';
+    const scriptKey = 'summary_generator_script.py';
 
    const userData = `#!/bin/bash
     echo "Starting user data script..." | tee -a /var/log/cloud-init-output.log
@@ -77,17 +77,15 @@ async function launchEC2Instance(bucketName, instanceRoleArn, itemId, s3Link, op
     echo "OPENAI_API_KEY=${openaiApiKey}" >> /etc/environment
 
     # Use awscli from the virtual environment to download the Python script
-    echo "Downloading script from S3" | tee -a /home/ec2-user/placeholder_output.log
-    /home/ec2-user/env/bin/aws s3 cp s3://${bucketName}/${scriptKey} /home/ec2-user/placeholder.py | tee -a /home/ec2-user/placeholder_output.log
+    echo "Downloading script from S3" | tee -a /home/ec2-user/summary_generator_script_output.log
+    /home/ec2-user/env/bin/aws s3 cp s3://${bucketName}/scripts/${scriptKey} /home/ec2-user/summary_generator_script.py | tee -a /home/ec2-user/summary_generator_script_output.log
 
     # Make the script executable and run it using the virtual environment
-    chmod +x /home/ec2-user/placeholder.py
-    echo "Running the placeholder script" | tee -a /home/ec2-user/placeholder_output.log
-    /home/ec2-user/env/bin/python /home/ec2-user/placeholder.py | tee -a /home/ec2-user/placeholder_output.log
+    chmod +x /home/ec2-user/summary_generator_script.py
+    echo "Running the summary_generator_script script" | tee -a /home/ec2-user/summary_generator_script_output.log
+    /home/ec2-user/env/bin/python /home/ec2-user/summary_generator_script.py | tee -a /home/ec2-user/summary_generator_script_output.log
 
-    # Automatically terminate the instance after the script completes
-    INSTANCE_ID=$(ec2-metadata -i | cut -d ' ' -f 2)
-    /home/ec2-user/env/bin/aws ec2 terminate-instances --instance-ids "$INSTANCE_ID" --region ${process.env.AWS_REGION}
+    
 
     echo "User data script completed" | tee -a /var/log/cloud-init-output.log
 `;

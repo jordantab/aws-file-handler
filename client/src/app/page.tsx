@@ -28,6 +28,11 @@ const HomePage = () => {
       return;
     }
 
+    if (!text) {
+      alert("Please enter text to associate with the file.");
+      return;
+    }
+
     try {
       setIsUploading(true);
 
@@ -44,12 +49,10 @@ const HomePage = () => {
         body: file,
       });
 
-      // S3 link of the uploaded file
-      const s3Link = url.split("?")[0];
+      const s3Link = url.split("?")[0]; // S3 link of the uploaded file
 
       // 3: Call API Gateway to store metadata
-      const apiGatewayURL =
-        "https://1o5sr7szq5.execute-api.us-east-1.amazonaws.com/prod/";
+      const apiGatewayURL = process.env.NEXT_PUBLIC_API_GATEWAY_URL!;
 
       const ddbResponse = await fetch(apiGatewayURL, {
         method: "POST",
