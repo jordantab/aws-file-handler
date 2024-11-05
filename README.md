@@ -44,7 +44,16 @@ Before setting up each component, ensure you have the following tools installed:
 
 Before proceeding with the AWS configuration, create an AWS IAM user and provide the necessary permissions. The AWS user associated with the provided **Access Key ID** and **Secret Access Key** must have the following permissions to deploy and run the application successfully:
 
-- **AdministratorAccess**
+- **AmazonAPIGatewayAdministrator**
+- **AmazonAPIGatewayInvokeFullAccess**
+- **AmazonDynamoDBFullAccess**
+- **AmazonEC2FullAccess**
+- **AmazonS3FullAccess**
+- **AmazonSSMFullAccess**
+- **AWSCloudFormationFullAccess**
+- **AWSLambda_FullAccess**
+- **CloudWatchLogsFullAccess**
+- **IAMFullAccess**
 
 These permissions can be assigned by attaching the relevant AWS managed policies to the IAM user. This will allow the application to manage resources such as S3 buckets, DynamoDB tables, Lambda functions, EC2 instances, and API Gateway, as well as interact with the OpenAI API through AWS SSM.
 
