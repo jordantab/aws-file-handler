@@ -217,6 +217,8 @@ export class InfrastructureStack extends cdk.Stack {
           "ec2:CreateTags",
           "iam:PassRole",
           "ssm:GetParameter",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupIngress",
         ],
         resources: [
           "arn:aws:ec2:us-east-1:*:instance/*",

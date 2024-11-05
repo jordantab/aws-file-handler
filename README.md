@@ -55,6 +55,10 @@ Before proceeding with the AWS configuration, create an AWS IAM user and provide
 - **CloudWatchLogsFullAccess**
 - **IAMFullAccess**
 
+Alternatively, if your AWS account has a permission quota limit, you can simply add the following permission only:
+
+- **AdministratorAccess**
+
 These permissions can be assigned by attaching the relevant AWS managed policies to the IAM user. This will allow the application to manage resources such as S3 buckets, DynamoDB tables, Lambda functions, EC2 instances, and API Gateway, as well as interact with the OpenAI API through AWS SSM.
 
 ### Step 2: Configure AWS CLI
@@ -99,9 +103,17 @@ cd infrastructure
 npm install
 ```
 
-#### Step 4.2: Deploy the CDK Stack
+#### Step 4.2: Bootstrap CDK
 
-Run the follwoing command to deploy the AWS infrastructure
+Run the following command to deploy the AWS infrastructure
+
+```bash
+cdk bootstrap
+```
+
+#### Step 4.3: Deploy the CDK Stack
+
+Run the following command to deploy the AWS infrastructure
 
 ```bash
 cdk deploy --outputs-file cdk-outputs.json
