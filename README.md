@@ -70,7 +70,7 @@ This command will prompt you for your:
 - **AWS Access Key ID**
 - **AWS Secret Access Key**
 - **Default region name** (e.g., `us-east-1`)
-- **Default output format** (e.g., `json`)
+- **Default output format** (e.g., None)
 
 Ensure that the AWS CLI is properly configured with the credentials of the IAM user created in Step 1.
 
@@ -92,10 +92,10 @@ Now that you have configured your AWS environment and stored your OpenAI API key
 
 #### Step 4.1: Install Dependencies
 
-Navigate to the backend directory and install the necessary dependencies for the AWS CDK stack:
+Navigate to the infrastructure directory and install the necessary dependencies for the AWS CDK stack:
 
 ```bash
-cd profound-takehome/infrastructure
+cd infrastructure
 npm install
 ```
 
@@ -116,41 +116,6 @@ This command will deploy all the necessary AWS resources, including:
 
 During deployment, you will be asked to confirm that you allow IAM-related changes, such as creating roles and policies. Type y to proceed.
 
-#### Step 4.3: Verify Deployment
-
-After the deployment completes, you can verify the resources through the AWS CLI:
-
-- **S3 Bucket**:
-  To list all S3 buckets and verify that the bucket for file storage has been created, run:
-
-  ```bash
-  aws s3 ls
-  ```
-
-  This will list all available buckets. Look for the bucket created for this deployment.
-
-- **DynamoDB Table**: To verify the DynamoDB table named `FileMetadataTable`, run:
-
-  ```bash
-  aws dynamodb describe-table --table-name FileMetadataTable
-  ```
-
-  If the table exists, you will get details about it. If not, it will return an error indicating that the table doesn't exist.
-
-- **Lambda Functions**: To check if the Lambda functions IndexHandler and SummarizeHandler exist:
-
-  - For **IndexHandler**:
-    ```bash
-    aws lambda get-function --function-name IndexHandler
-    ```
-  - For **SummarizeHandler**:
-    ```bash
-    aws lambda get-function --function-name SummarizeHandler
-    ```
-    If the function exists, you will get its details. If not, you will get an error stating that the function cannot be found.
-
-These commands will directly confirm the presence of the specified resources.
-
 ## Client Application Setup
 
 The Client of this application is built with **Next.js** and provides a user-friendly interface for uploading `.txt` files and input text for processing. This section will guide you through setting up and running the Client.
@@ -161,7 +126,7 @@ The Client interacts with the AWS backend services to enable users to upload fil
 
 ### Step 5.1: Install Client Dependencies
 
-First, navigate to the `Client` directory and install all necessary dependencies using npm:
+First, navigate to the `client` directory and install all necessary dependencies using npm:
 
 ```bash
 cd ../client

@@ -5,8 +5,6 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-console.log(process.env.AWS_REGION);
-
 // Create s3 client
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
@@ -19,7 +17,6 @@ const s3Client = new S3Client({
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const fileName = searchParams.get("fileName");
-  console.log(fileName);
 
   if (!fileName) {
     return NextResponse.json(
