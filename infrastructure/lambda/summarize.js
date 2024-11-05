@@ -105,6 +105,7 @@ async function launchEC2Instance(bucketName, instanceRoleArn, itemId, s3Link, op
         SecurityGroupIds: [
             process.env.SECURITY_GROUP_ID,
         ],
+        SubnetId: process.env.SUBNET_ID,
         IamInstanceProfile: {
             Arn: instanceRoleArn,
         },

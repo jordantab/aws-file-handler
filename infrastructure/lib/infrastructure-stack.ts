@@ -43,15 +43,19 @@ export class InfrastructureStack extends cdk.Stack {
     });
 
     // dynamoDB table that stores s3 file metadata
-    const metadataTable = new dynamodb.Table(this, "FileMetadataTable", {
-      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
-      tableName: "FileMetadataTable",
-      stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
+    const metadataTable = new dynamodb.Table(
+      this,
+      "ProfoundFileMetadataTable",
+      {
+        partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+        tableName: "ProfoundFileMetadataTable",
+        stream: dynamodb.StreamViewType.NEW_IMAGE,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }
+    );
 
     // initial insertion of the new file metadata into the dynamoDB table
-    const index = new lambda.Function(this, "IndexHandler", {
+    const index = new lambda.Function(this, "DDBIndexHandler", {
       runtime: lambda.Runtime.NODEJS_18_X,
       code: lambda.Code.fromAsset("lambda"),
       handler: "index.handler",
@@ -92,7 +96,7 @@ export class InfrastructureStack extends cdk.Stack {
     );
 
     // Create a new vpc for ec2 instance
-    const vpc = new ec2.Vpc(this, "MyNewVpc", {
+    const vpc = new ec2.Vpc(this, "NewEC2VPC", {
       maxAzs: 2,
       natGateways: 1,
       subnetConfiguration: [
@@ -184,7 +188,8 @@ export class InfrastructureStack extends cdk.Stack {
         SCRIPT_PREFIX: "scripts/",
         INSTANCE_ROLE_ARN: instanceProfile.attrArn,
         OPENAI_API_KEY_SSM_PARAM: "/openai/api_key",
-        SECURITY_GROUP_ID: "sg-0a1066ca0cc64c325",
+        SECURITY_GROUP_ID: ec2SecurityGroup.securityGroupId,
+        SUBNET_ID: vpc.privateSubnets[0].subnetId,
       },
     });
 

@@ -5,6 +5,7 @@ const { randomUUID } = require("crypto");
 const ddb = new DynamoDBClient();
 
 const storeMetadata = async function (text, s3Link) {
+    console.log("in storeMetadata", text, s3Link);
     const params = {
         TableName: process.env.TABLE_NAME,
         Item: {
