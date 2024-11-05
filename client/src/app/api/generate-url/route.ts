@@ -1,42 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import {
-  SecretsManagerClient,
-  GetSecretValueCommand,
-} from "@aws-sdk/client-secrets-manager";
+import dotenv from "dotenv";
 
-async function getAWSCredentials() {
-  const client = new SecretsManagerClient();
-  try {
-    // Retrieve the secret with the specified SecretId
-    const data = await client.send(
-      new GetSecretValueCommand({ SecretId: "AWSAccessKeys" })
-    );
+dotenv.config();
 
-    // Parse and return the credentials if found in SecretString
-    if ("SecretString" in data) {
-      return JSON.parse(data.SecretString!);
-    }
-
-    throw new Error("SecretString is missing in the response.");
-  } catch (error) {
-    console.error(
-      "Error retrieving AWS credentials from Secrets Manager:",
-      error
-    );
-    throw error;
-  }
-}
-
-const credentials = await getAWSCredentials();
+console.log(process.env.AWS_REGION);
 
 // Create s3 client
 const s3Client = new S3Client({
-  region: credentials.AWS_REGION,
+  region: process.env.AWS_REGION,
   credentials: {
-    accessKeyId: credentials.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: credentials.AWS_SECRET_ACCESS_KEY!,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
   },
 });
 
