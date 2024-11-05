@@ -85,7 +85,9 @@ async function launchEC2Instance(bucketName, instanceRoleArn, itemId, s3Link, op
     echo "Running the summary_generator_script script" | tee -a /home/ec2-user/summary_generator_script_output.log
     /home/ec2-user/env/bin/python /home/ec2-user/summary_generator_script.py | tee -a /home/ec2-user/summary_generator_script_output.log
 
-    
+    # Automatically terminate the instance after the script completes
+    INSTANCE_ID=$(ec2-metadata -i | cut -d ' ' -f 2)
+    /home/ec2-user/env/bin/aws ec2 terminate-instances --instance-ids "$INSTANCE_ID" --region ${process.env.AWS_REGION}
 
     echo "User data script completed" | tee -a /var/log/cloud-init-output.log
 `;
