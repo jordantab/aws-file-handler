@@ -28,6 +28,7 @@ exports.handler = async function (event) {
     for (const record of event.Records) { 
         console.log("Stream record: ", JSON.stringify(record, null, 2));
         
+        // check if the record is a new insertion
         if (record.eventName == 'INSERT') {
             const newItem = record.dynamodb.NewImage;
             console.log("New item added: ", JSON.stringify(newItem));
@@ -45,8 +46,10 @@ exports.handler = async function (event) {
 };
 
 async function launchEC2Instance(bucketName, instanceRoleArn, itemId, s3Link, openaiApiKey) {
+    // python script key on S3 bucket
     const scriptKey = 'summary_generator_script.py';
 
+    // Bash script to get the ec2 instance running once launched
    const userData = `#!/bin/bash
     echo "Starting user data script..." | tee -a /var/log/cloud-init-output.log
     # Update system packages and install pip and virtualenv support
@@ -93,14 +96,14 @@ async function launchEC2Instance(bucketName, instanceRoleArn, itemId, s3Link, op
 `;
 
 
+    // ec2 instance parameters
     const params = {
         ImageId: 'ami-06b21ccaeff8cd686',
         InstanceType: 't3.medium',
         MinCount: 1,
         MaxCount: 1,
-        KeyName: '11785',
         SecurityGroupIds: [
-            "sg-0a1066ca0cc64c325"
+            process.env.SECURITY_GROUP_ID,
         ],
         IamInstanceProfile: {
             Arn: instanceRoleArn,

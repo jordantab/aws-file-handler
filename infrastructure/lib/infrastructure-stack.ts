@@ -7,6 +7,7 @@ import * as eventsources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
+import * as ec2 from "aws-cdk-lib/aws-ec2";
 
 export class InfrastructureStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -27,7 +28,7 @@ export class InfrastructureStack extends cdk.Stack {
       ],
     });
 
-    // Output the bucket name
+    // Output the bucket name to be used by the client side
     new cdk.CfnOutput(this, "S3BucketName", {
       value: profoundBucket.bucketName,
       description: "The S3 Bucket name where files are stored",
@@ -71,7 +72,7 @@ export class InfrastructureStack extends cdk.Stack {
       },
     });
 
-    // Output the API Gateway URL
+    // Output the API Gateway URL to be used by the client side
     new cdk.CfnOutput(this, "ApiGatewayUrl", {
       value: gateway.url,
       description: "The URL of the API Gateway",
@@ -88,6 +89,49 @@ export class InfrastructureStack extends cdk.Stack {
     );
     instanceRole.addManagedPolicy(
       iam.ManagedPolicy.fromAwsManagedPolicyName("CloudWatchAgentServerPolicy")
+    );
+
+    // Create a new vpc for ec2 instance
+    const vpc = new ec2.Vpc(this, "MyNewVpc", {
+      maxAzs: 2,
+      natGateways: 1,
+      subnetConfiguration: [
+        {
+          subnetType: ec2.SubnetType.PUBLIC,
+          name: "PublicSubnet",
+          cidrMask: 24,
+        },
+        {
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+          name: "PrivateSubnet",
+          cidrMask: 24,
+        },
+      ],
+    });
+
+    // Create a security group within the new VPC
+    const ec2SecurityGroup = new ec2.SecurityGroup(this, "EC2SecurityGroup", {
+      vpc,
+      description:
+        "Security group for EC2 instance with HTTP, HTTPS, and SSH access",
+      allowAllOutbound: true,
+    });
+
+    // Add inbound rules to allow HTTP, HTTPS, and SSH
+    ec2SecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(80),
+      "Allow HTTP access from anywhere"
+    );
+    ec2SecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(22),
+      "Allow SSH access from anywhere"
+    );
+    ec2SecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(443),
+      "Allow HTTPS access from anywhere"
     );
 
     // cdk friendly arn formatting
@@ -120,6 +164,7 @@ export class InfrastructureStack extends cdk.Stack {
       })
     );
 
+    // ec2 instance Role
     const instanceProfile = new iam.CfnInstanceProfile(
       this,
       "EC2InstanceProfile",
@@ -128,6 +173,7 @@ export class InfrastructureStack extends cdk.Stack {
       }
     );
 
+    // lambda function handler that triggers python script
     const summarize = new lambda.Function(this, "SummarizeHandler", {
       runtime: lambda.Runtime.NODEJS_18_X,
       code: lambda.Code.fromAsset("lambda"),
@@ -138,6 +184,7 @@ export class InfrastructureStack extends cdk.Stack {
         SCRIPT_PREFIX: "scripts/",
         INSTANCE_ROLE_ARN: instanceProfile.attrArn,
         OPENAI_API_KEY_SSM_PARAM: "/openai/api_key",
+        SECURITY_GROUP_ID: "sg-0a1066ca0cc64c325",
       },
     });
 
